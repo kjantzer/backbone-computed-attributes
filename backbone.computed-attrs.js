@@ -1,5 +1,5 @@
 /*
-	Backbone Computed Attributes 0.1.0
+	Backbone Computed Attributes 0.1.1
 
 	Sometimes there is a need for a computed model attribute, whether it
 	be formatting a date or doing a complex lookup, filter and/or mapping.
@@ -58,6 +58,7 @@ _.extend(Backbone.Model.prototype, {
 
 		// define object to store computed attributes
 		this.__computed_attributes = this.__computed_attributes || {};
+		this.__computed_attributes_events = this.__computed_attributes_events || {};
 
 		// compute the attribute value if not defined
 		if( this.__computed_attributes[key] === undefined){
@@ -65,10 +66,11 @@ _.extend(Backbone.Model.prototype, {
 			var fn = this.computedAttrs[key].compute;
 			var val = _.isFunction(fn) ? fn.call(this) : (this[fn] && _.isFunction(this[fn]) ? this[fn].call(this) : fn);
 
+			// cache the computed val
 			this.__computed_attributes[key] = val;
 
 			// bind "stale on" events if needed
-			if( this.computedAttrs[key].eventsBound != true ){
+			if( this.__computed_attributes_events[key] != true ){
 
 				var staleEvents = this.computedAttrs[key].events || ['reset', 'change:'+key];
 
@@ -77,12 +79,13 @@ _.extend(Backbone.Model.prototype, {
 					this.listenTo(this, eventKey, this._markComputedAttrStale.bind(this, key))
 				}.bind(this))
 
-				this.computedAttrs[key].eventsBound = true;
+				this.__computed_attributes_events[key] = true;
 
 			} // bind stale events
 
 		}
 
+		// return the computed value
 		return this.__computed_attributes[key];
 	},
 

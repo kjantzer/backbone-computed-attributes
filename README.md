@@ -1,4 +1,4 @@
-Backbone Computed Attributes 0.1.0
+Backbone Computed Attributes 0.1.1
 ==============================
 
 ###Extends Backbone.Model with support for cached computed attributes.
