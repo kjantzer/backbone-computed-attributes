@@ -1,5 +1,5 @@
 /*
-	Backbone Computed Attributes 0.1.1
+	Backbone Computed Attributes 0.2.0
 
 	Sometimes there is a need for a computed model attribute, whether it
 	be formatting a date or doing a complex lookup, filter and/or mapping.
@@ -38,6 +38,10 @@
 	this.compute('full_name'); // cached value returned;
 	this.fetch();
 	this.compute('full_name'); // value computed
+
+	NOTE: computed attributes are setup on initialize. If you need to override the init
+	method on a model, make sure to first call:
+		`this.setupComputedAttrs()`
 */
 
 _.extend(Backbone.Model.prototype, {
@@ -48,6 +52,32 @@ _.extend(Backbone.Model.prototype, {
 	// 		compute: fn() OR string of method name on model
 	// 	}
 	// },
+
+	initialize: function(){
+		this.setupComputedAttrs();
+	},
+
+	setupComputedAttrs: function(){
+		if( this.computedAttrs && !this.__computed_attributes_setup ){
+			this.__computed_attributes_setup = true;
+			_.each(this.computedAttrs, this._setupComputedAttr, this);
+		}
+	},
+
+	_setupComputedAttr: function(data, key){
+
+		var fn = data.compute;
+		if( this[fn||key] && _.isFunction(this[fn||key]) ){
+
+			// switch the compute method with the one found on the model
+			data.compute = this[fn||key];
+
+			// switch the model method with a call to the compute method
+			Object.getPrototypeOf(this)[fn||key] = function(){
+				return this.compute(key);
+			}
+		}
+	},
 
 	compute: function(key){
 
@@ -64,7 +94,7 @@ _.extend(Backbone.Model.prototype, {
 		if( this.__computed_attributes[key] === undefined){
 			
 			var fn = this.computedAttrs[key].compute;
-			var val = _.isFunction(fn) ? fn.call(this) : (this[fn] && _.isFunction(this[fn]) ? this[fn].call(this) : fn);
+			var val = _.isFunction(fn) ? fn.call(this) : (this[fn||key] && _.isFunction(this[fn||key]) ? this[fn||key].call(this) : fn);
 
 			// cache the computed val
 			this.__computed_attributes[key] = val;
@@ -73,10 +103,16 @@ _.extend(Backbone.Model.prototype, {
 			if( this.__computed_attributes_events[key] != true ){
 
 				var staleEvents = this.computedAttrs[key].events || ['reset', 'change:'+key];
+				this.__computed_attributes_stale_events = this.__computed_attributes_stale_events || {}
 
 				// bind each event
 				_.each(staleEvents, function(eventKey){
-					this.listenTo(this, eventKey, this._markComputedAttrStale.bind(this, key))
+
+					this.__computed_attributes_stale_events[eventKey] = this.__computed_attributes_stale_events[eventKey] || []
+					this.__computed_attributes_stale_events[eventKey].push(key)
+
+					this.listenTo(this, eventKey, this._markComputedAttrStale.bind(this, eventKey))
+
 				}.bind(this))
 
 				this.__computed_attributes_events[key] = true;
@@ -89,8 +125,18 @@ _.extend(Backbone.Model.prototype, {
 		return this.__computed_attributes[key];
 	},
 
-	_markComputedAttrStale: function(key){
-		this.__computed_attributes && this.__computed_attributes[key] && delete this.__computed_attributes[key];
+	_markComputedAttrStale: function(eventKey){
+
+		var keys = this.__computed_attributes_stale_events[eventKey];
+
+		_.each(keys, function(key){
+			
+			this.__computed_attributes && delete this.__computed_attributes[key]
+
+			this.trigger('change:computed:'+key, this);
+
+		}.bind(this));
 	}
 
 })
+
