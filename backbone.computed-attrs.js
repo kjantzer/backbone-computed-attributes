@@ -1,5 +1,5 @@
 /*
-	Backbone Computed Attributes 0.2.0
+	Backbone Computed Attributes 0.2.1
 
 	Sometimes there is a need for a computed model attribute, whether it
 	be formatting a date or doing a complex lookup, filter and/or mapping.
@@ -79,6 +79,10 @@ _.extend(Backbone.Model.prototype, {
 		}
 	},
 
+	// for debuging purposes
+	disableComputedAttrs: function(){ this.__computed_attributes_disabled = true; },
+	enableComputedAttrs: function(){ delete this.__computed_attributes_disabled; },
+
 	compute: function(key){
 
 		if( !this.computedAttrs || !this.computedAttrs[key] ){
@@ -91,7 +95,7 @@ _.extend(Backbone.Model.prototype, {
 		this.__computed_attributes_events = this.__computed_attributes_events || {};
 
 		// compute the attribute value if not defined
-		if( this.__computed_attributes[key] === undefined){
+		if( this.__computed_attributes[key] === undefined || this.__computed_attributes_disabled === true){
 			
 			var fn = this.computedAttrs[key].compute;
 			var val = _.isFunction(fn) ? fn.call(this) : (this[fn||key] && _.isFunction(this[fn||key]) ? this[fn||key].call(this) : fn);
