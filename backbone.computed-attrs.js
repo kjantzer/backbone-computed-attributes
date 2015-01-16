@@ -115,7 +115,7 @@ _.extend(Backbone.Model.prototype, {
 					this.__computed_attributes_stale_events[eventKey] = this.__computed_attributes_stale_events[eventKey] || []
 					this.__computed_attributes_stale_events[eventKey].push(key)
 
-					this.listenTo(this, eventKey, this._markComputedAttrStale.bind(this, eventKey))
+					this.listenTo(this, eventKey, this._markComputedAttrStale.bind(this, key, eventKey))
 
 				}.bind(this))
 
@@ -129,7 +129,12 @@ _.extend(Backbone.Model.prototype, {
 		return this.__computed_attributes[key];
 	},
 
-	_markComputedAttrStale: function(eventKey){
+	_markComputedAttrStale: function(key, eventKey, model, changedVal){
+
+		var existingVal = this.__computed_attributes[key];
+
+		if( _.isArray(existingVal) && existingVal.length == changedVal.length )
+			return;
 
 		var keys = this.__computed_attributes_stale_events[eventKey];
 
